@@ -53,7 +53,7 @@ public class ClusterServiceImpl implements ClusterService {
 
 	@Override
 	public Set<String> getClusters() {
-		try (Jedis dataStoreJedis = dataStoreJedisPool.getResource()) {
+            		try (Jedis dataStoreJedis = dataStoreJedisPool.getResource()) {
 			return dataStoreJedis.smembers(Constants.getClustersRedisKey(redisPrefixKey));
 		}
 	}
@@ -371,4 +371,24 @@ public class ClusterServiceImpl implements ClusterService {
 
 		return result;
 	}
+
+    @Override
+    public Map<String, List<Map<String, String>>> getClusterSlowLogHistory(String clusterName, List<String> nodes, long start, long end) {
+		Map<String, List<Map<String, String>>> result = Maps.newLinkedHashMap();
+
+        if (end < start) {
+            throw new InvalidParameterException("End time must be larger than start time.");
+        }
+
+        nodes.parallelStream().forEach(nodeId -> {
+            log.debug("node loop : {}", nodeId);
+            List<Map<String, String>> slowLogHistory = nodeService.getSlowLogHistory(clusterName, nodeId);
+
+            if (!slowLogHistory.isEmpty()) {
+                result.put(nodeId, slowLogHistory);
+            }
+        });
+
+        return result;
+    }
 }
